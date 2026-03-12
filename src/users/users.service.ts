@@ -1,26 +1,74 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { hash } from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './entities/user.entity';
+import { UsersRepository } from './users.repository';
 
 @Injectable()
 export class UsersService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+  constructor(private readonly usersRepository: UsersRepository) {}
+
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const existingUser = this.usersRepository.findByName(createUserDto.name);
+
+    if (existingUser) {
+      throw new ConflictException(
+        `Username "${createUserDto.name}" is already taken`,
+      );
+    }
+
+    const hashedPassword = await hash(createUserDto.password, 10);
+
+    return this.usersRepository.create({
+      ...createUserDto,
+      password: hashedPassword,
+    });
   }
 
-  findAll() {
-    return `Users service!`;
+  findAll(): User[] {
+    return this.usersRepository.findAll();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  findOne(id: number): User {
+    const user = this.usersRepository.findOne(id);
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return user;
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = this.usersRepository.findOne(id);
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    const updatedData: UpdateUserDto = { ...updateUserDto };
+
+    if (updatedData.password !== undefined) {
+      updatedData.password = await hash(updatedData.password, 10);
+    }
+
+    const updatedUser = this.usersRepository.update(id, updatedData);
+
+    if (!updatedUser) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return updatedUser;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  remove(id: number): User {
+    const user = this.usersRepository.remove(id);
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return user;
   }
 }
