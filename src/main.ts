@@ -2,9 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-
+import { loggerMiddleware } from './common/middleware/logger.middleware';
+import { requestTrackingMiddleware } from './common/middleware/request-tracking.middleware';
+import { simpleMiddleware } from './common/middleware/simple.middleware';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
